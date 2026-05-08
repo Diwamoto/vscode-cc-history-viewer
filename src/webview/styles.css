@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+:root {
+  --bg: var(--vscode-sideBar-background, #282c34);
+  --bg-sunk: var(--vscode-sideBarSectionHeader-background, #21252b);
+  --bg-raised: var(--vscode-list-hoverBackground, #2c313c);
+  --bg-active: var(--vscode-list-activeSelectionBackground, #3e4451);
+  --border: var(--vscode-sideBar-border, #181a1f);
+  --border-soft: var(--vscode-panel-border, #3e4451);
+  --text: var(--vscode-sideBar-foreground, #abb2bf);
+  --text-bright: var(--vscode-foreground, #e6e6e6);
+  --text-muted: var(--vscode-descriptionForeground, #5c6370);
+  --accent: var(--vscode-textLink-foreground, #61afef);
+  --accent-soft: color-mix(in srgb, var(--accent) 20%, transparent);
+  --bubble-user-bg: #3a6a4f;
+  --bubble-user-text: #e6f3ec;
+  --bubble-assistant-bg: #3a3f4b;
+  --bubble-assistant-text: #d7dae0;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans CJK JP", sans-serif);
+  background: var(--bg);
+  color: var(--text);
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-soft); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--bg-active); }
+
+.markdown {
+  line-height: 1.55;
+  word-break: break-word;
+}
+.markdown > *:first-child { margin-top: 0; }
+.markdown > *:last-child { margin-bottom: 0; }
+.markdown h1, .markdown h2, .markdown h3 { font-weight: 600; margin: 0.6em 0 0.3em; }
+.markdown h1 { font-size: 1.3em; }
+.markdown h2 { font-size: 1.15em; }
+.markdown h3 { font-size: 1.02em; }
+.markdown p { margin: 0.4em 0; }
+.markdown ul, .markdown ol { padding-left: 1.4em; margin: 0.4em 0; }
+.markdown code {
+  background: rgba(0,0,0,0.25);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-family: var(--vscode-editor-font-family, ui-monospace, "SF Mono", Menlo, monospace);
+  font-size: 0.88em;
+}
+.markdown pre {
+  background: #1d2026;
+  border: 1px solid var(--border);
+  padding: 0.7em 0.9em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.6em 0;
+}
+.markdown pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 0.85em;
+  color: var(--text-bright);
+}
+.markdown blockquote {
+  border-left: 3px solid var(--border-soft);
+  padding-left: 0.8em;
+  color: var(--text-muted);
+  margin: 0.5em 0;
+}
+.markdown a { color: var(--accent); text-decoration: underline; }
+.markdown table { border-collapse: collapse; margin: 0.5em 0; display: block; overflow-x: auto; max-width: 100%; }
+.markdown th, .markdown td { border: 1px solid var(--border-soft); padding: 0.3em 0.6em; }
+.markdown hr { border: 0; border-top: 1px solid var(--border-soft); margin: 0.8em 0; }
+
+.highlight-flash { box-shadow: 0 0 0 2px var(--accent); transition: box-shadow 1.6s ease; }
+
+.bubble-collapsed { position: relative; max-height: 280px; overflow: hidden; }
+.bubble-collapsed::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 80px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--bubble-fade) 90%);
+}
+.bubble-user .bubble-collapsed::after,
+.bubble-assistant .bubble-collapsed::after { background: linear-gradient(to bottom, transparent, var(--bubble-fade) 90%); }
+.bubble-user { --bubble-fade: var(--bubble-user-bg); }
+.bubble-assistant { --bubble-fade: var(--bubble-assistant-bg); }

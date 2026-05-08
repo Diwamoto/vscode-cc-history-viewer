@@ -1,0 +1,8 @@
+node_modules
+out
+media/bundle.js
+media/bundle.css
+media/bundle-*.js
+media/assets
+*.vsix
+.DS_Store
