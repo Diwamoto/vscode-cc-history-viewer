@@ -15,7 +15,7 @@ export type SessionMeta = {
   messageCount: number;
 };
 
-export type MessageRole = "user" | "assistant";
+export type MessageRole = "user" | "assistant" | "tool_result";
 
 export type Message = {
   uuid: string;

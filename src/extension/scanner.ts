@@ -90,6 +90,96 @@ function extractText(content: JsonValue): string {
   return "";
 }
 
+function isToolResultOnly(content: JsonValue): boolean {
+  if (!Array.isArray(content) || content.length === 0) return false;
+  for (const block of content) {
+    const obj = asObject(block);
+    if (!obj) return false;
+    if (asString(obj.type) !== "tool_result") return false;
+  }
+  return true;
+}
+
+const ANSI_RE = /\x1b\[[0-9;]*[a-zA-Z]/g;
+const SKILL_BODY_PREFIX = "Base directory for this skill:";
+
+function stripAnsi(s: string): string {
+  return s.replace(ANSI_RE, "");
+}
+
+const BASH_INPUT_RE = /^<bash-input>([\s\S]*?)<\/bash-input>\s*$/;
+const BASH_OUTPUT_RE =
+  /^<bash-stdout>([\s\S]*?)<\/bash-stdout>\s*<bash-stderr>([\s\S]*?)<\/bash-stderr>\s*$/;
+
+function formatBashInput(text: string): string | null {
+  const m = text.match(BASH_INPUT_RE);
+  if (!m) return null;
+  const cmd = (m[1] ?? "").trim();
+  if (!cmd) return "```bash\n$\n```";
+  const lines = cmd.split("\n").map((l, i) => (i === 0 ? `$ ${l}` : `  ${l}`));
+  return "```bash\n" + lines.join("\n") + "\n```";
+}
+
+function formatBashOutput(text: string): string | null {
+  const m = text.match(BASH_OUTPUT_RE);
+  if (!m) return null;
+  const stdout = stripAnsi(m[1] ?? "").replace(/\s+$/, "");
+  const stderr = stripAnsi(m[2] ?? "").replace(/\s+$/, "");
+  const parts: string[] = [];
+  if (stdout) parts.push(stdout);
+  if (stderr) parts.push(stderr);
+  if (parts.length === 0) return "";
+  return "```\n" + parts.join("\n") + "\n```";
+}
+
+function formatCommandText(text: string): string {
+  if (text.startsWith(SKILL_BODY_PREFIX)) {
+    const m = text.match(/skills\/([^/\s]+)/);
+    const name = m?.[1];
+    return name ? `[Skill loaded: ${name}]` : "[Skill loaded]";
+  }
+
+  const bashIn = formatBashInput(text);
+  if (bashIn) return bashIn;
+
+  const bashOut = formatBashOutput(text);
+  if (bashOut) return bashOut;
+
+  const cmdName = text.match(/<command-name>([\s\S]*?)<\/command-name>/)?.[1];
+  const cmdArgs = text.match(/<command-args>([\s\S]*?)<\/command-args>/)?.[1];
+  const stdout = text.match(/<local-command-stdout>([\s\S]*?)<\/local-command-stdout>/)?.[1];
+
+  if (cmdName === undefined && stdout === undefined) return text;
+
+  const parts: string[] = [];
+  if (cmdName !== undefined) {
+    parts.push(`RunCommand: ${cmdName.trim()}`);
+    if (cmdArgs && cmdArgs.trim()) {
+      parts.push(`Arg: ${cmdArgs.trim()}`);
+    }
+  }
+  if (stdout !== undefined) {
+    const out = stripAnsi(stdout).trim();
+    if (out) parts.push(`Output: ${out}`);
+  }
+
+  const rest = text
+    .replace(/<command-name>[\s\S]*?<\/command-name>/g, "")
+    .replace(/<command-message>[\s\S]*?<\/command-message>/g, "")
+    .replace(/<command-args>[\s\S]*?<\/command-args>/g, "")
+    .replace(/<local-command-stdout>[\s\S]*?<\/local-command-stdout>/g, "")
+    .trim();
+
+  if (rest) parts.push(rest);
+  return parts.join("\n\n");
+}
+
+const CAVEAT_RE = /<local-command-caveat>[\s\S]*?<\/local-command-caveat>/g;
+
+function stripCaveats(s: string): string {
+  return s.replace(CAVEAT_RE, "");
+}
+
 function truncateChars(s: string, max: number): string {
   const chars = Array.from(s);
   if (chars.length <= max) return s;
@@ -145,8 +235,10 @@ async function readMeta(filepath: string, mtimeMs: number, size: number): Promis
     messageCount += 1;
     if (t === "user" && firstPrompt === null) {
       const message = asObject(obj.message);
-      if (message && "content" in message) {
-        const txt = extractText(message.content).trim();
+      if (message && "content" in message && !isToolResultOnly(message.content)) {
+        const txt = stripCaveats(
+          formatCommandText(extractText(message.content).trim())
+        ).trim();
         if (txt) firstPrompt = truncateChars(txt, 240);
       }
     }
@@ -246,7 +338,8 @@ export async function readMessages(filepath: string): Promise<Message[]> {
     const message = asObject(obj.message);
     if (!message) continue;
     const content = "content" in message ? message.content : "";
-    const text = extractText(content).trim();
+    if (role === "user" && isToolResultOnly(content)) role = "tool_result";
+    const text = formatCommandText(extractText(content).trim()).trim();
     if (!text) continue;
     out.push({
       uuid: asString(obj.uuid) ?? "",
